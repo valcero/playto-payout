@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import BankAccount, LedgerEntry, Merchant
+from .models import BankAccount, LedgerEntry, Merchant, Payout
 
 #admin registration for all 3 models
 @admin.register(Merchant)
@@ -20,3 +20,10 @@ class LedgerEntryAdmin(admin.ModelAdmin):
     list_display = ["entry_type", "amount_paise", "merchant", "description", "created_at"]
     list_filter = ["entry_type", "merchant"]
     readonly_fields = ["id", "created_at"]
+
+
+@admin.register(Payout)
+class PayoutAdmin(admin.ModelAdmin):
+    list_display = ["id", "merchant", "amount_paise", "status", "attempts", "created_at"]
+    list_filter = ["status", "merchant"]
+    readonly_fields = ["id", "created_at", "updated_at"]
