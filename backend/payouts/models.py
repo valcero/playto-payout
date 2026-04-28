@@ -143,10 +143,13 @@ class Payout(models.Model):
         COMPLETED = "completed", "Completed"
         FAILED = "failed", "Failed"
 
-    # every legal transition. if a (from, to) pair isn't here, it's illegal.
+    # Every legal transition. If a (from, to) pair isn't here, it's illegal.
+    # processing → pending exists solely for retry — the retry worker resets
+    # timed-out payouts so they get re-picked. Terminal states (completed, failed)
+    # have no entry: they allow nothing.
     VALID_TRANSITIONS = {
         Status.PENDING: {Status.PROCESSING},
-        Status.PROCESSING: {Status.COMPLETED, Status.FAILED},
+        Status.PROCESSING: {Status.COMPLETED, Status.FAILED, Status.PENDING},
     }
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
