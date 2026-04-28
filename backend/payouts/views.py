@@ -16,8 +16,15 @@ from .serializers import (
 )
 
 
-def _merchant_id_from_url(request, **kwargs):
-    return kwargs["merchant_id"]
+def _merchant_id_from_request(request, **kwargs):
+    bank_account_id = request.data.get("bank_account_id")
+    if not bank_account_id:
+        return None
+
+    try:
+        return BankAccount.objects.only("merchant_id").get(id=bank_account_id).merchant_id
+    except (BankAccount.DoesNotExist, ValueError, TypeError):
+        return None
 
 
 class MerchantListView(APIView):
@@ -59,8 +66,15 @@ class PayoutCreateView(APIView):
     concurrent payout requests — only one can check-and-deduct at a time.
     """
 
-    @idempotent(_merchant_id_from_url)
-    def post(self, request, merchant_id):
+    @idempotent(_merchant_id_from_request)
+    def post(self, request):
+        merchant_id = _merchant_id_from_request(request)
+        if not merchant_id:
+            return Response(
+                {"error": "Bank account not found or does not belong to a merchant"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             merchant = Merchant.objects.get(id=merchant_id)
         except Merchant.DoesNotExist:

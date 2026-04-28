@@ -30,6 +30,13 @@ def idempotent(get_merchant_id):
                 )
 
             merchant_id = get_merchant_id(request, **kwargs)
+            if isinstance(merchant_id, Response):
+                return merchant_id
+            if merchant_id is None:
+                return Response(
+                    {"error": "Could not determine merchant for idempotency scope"},
+                    status=400,
+                )
 
             idem_key = _claim_or_retrieve(key_uuid, merchant_id)
             if isinstance(idem_key, Response):

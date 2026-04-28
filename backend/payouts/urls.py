@@ -23,11 +23,7 @@ urlpatterns = [
         views.MerchantBankAccountsView.as_view(),
         name="merchant-bank-accounts",
     ),
-    path(
-        "merchants/<uuid:merchant_id>/payouts/",
-        views.PayoutCreateView.as_view(),
-        name="payout-create",
-    ),
+    path("payouts/", views.PayoutCreateView.as_view(), name="payout-create"),
     path(
         "merchants/<uuid:merchant_id>/payouts/history/",
         views.MerchantPayoutsView.as_view(),

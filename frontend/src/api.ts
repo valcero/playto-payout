@@ -31,7 +31,7 @@ export async function createPayout(
   bankAccountId: string,
   idempotencyKey: string
 ) {
-  const res = await fetch(`${BASE}/merchants/${merchantId}/payouts/`, {
+  const res = await fetch(`${BASE}/payouts/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

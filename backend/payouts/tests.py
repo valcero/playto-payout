@@ -30,7 +30,7 @@ class ConcurrencyTest(TransactionTestCase):
         try:
             client = APIClient()
             return client.post(
-                f"/api/v1/merchants/{self.merchant.id}/payouts/",
+                "/api/v1/payouts/",
                 data={
                     "amount_paise": amount_paise,
                     "bank_account_id": str(self.bank_account.id),
@@ -87,7 +87,7 @@ class IdempotencyTest(TransactionTestCase):
 
         #creates the payout
         response_1 = client.post(
-            f"/api/v1/merchants/{self.merchant.id}/payouts/",
+            "/api/v1/payouts/",
             data=payload,
             format="json",
             HTTP_IDEMPOTENCY_KEY=idempotency_key,
@@ -95,7 +95,7 @@ class IdempotencyTest(TransactionTestCase):
         self.assertEqual(response_1.status_code, 201)
 
         response_2 = client.post(
-            f"/api/v1/merchants/{self.merchant.id}/payouts/",
+            "/api/v1/payouts/",
             data=payload,
             format="json",
             HTTP_IDEMPOTENCY_KEY=idempotency_key,
@@ -114,13 +114,13 @@ class IdempotencyTest(TransactionTestCase):
         }
 
         response_1 = client.post(
-            f"/api/v1/merchants/{self.merchant.id}/payouts/",
+            "/api/v1/payouts/",
             data=payload,
             format="json",
             HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
         )
         response_2 = client.post(
-            f"/api/v1/merchants/{self.merchant.id}/payouts/",
+            "/api/v1/payouts/",
             data=payload,
             format="json",
             HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
