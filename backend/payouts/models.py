@@ -104,6 +104,38 @@ class LedgerEntry(models.Model):
         super().save(*args, **kwargs)
 
 
+class IdempotencyKey(models.Model):
+    """
+    Stores the idempotency key and its cached response.
+    Created with response_body=None when a request starts processing.
+    Filled in when the request completes. This lets us detect in-flight duplicates.
+    """
+    key = models.UUIDField()
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="idempotency_keys"
+    )
+    response_status = models.IntegerField(null=True)
+    response_body = models.JSONField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["merchant", "key"],
+                name="unique_idempotency_key_per_merchant",
+            ),
+        ]
+
+    def is_expired(self):
+        return self.created_at < timezone.now() - timezone.timedelta(hours=24)
+
+    def is_complete(self):
+        return self.response_status is not None
+
+    def __str__(self):
+        return f"IdempotencyKey {self.key} [{self.merchant.name}]"
+
+
 class Payout(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -111,7 +143,7 @@ class Payout(models.Model):
         COMPLETED = "completed", "Completed"
         FAILED = "failed", "Failed"
 
-    # Every legal transition. If a (from, to) pair isn't here, it's illegal.
+    # every legal transition. if a (from, to) pair isn't here, it's illegal.
     VALID_TRANSITIONS = {
         Status.PENDING: {Status.PROCESSING},
         Status.PROCESSING: {Status.COMPLETED, Status.FAILED},
@@ -144,10 +176,9 @@ class Payout(models.Model):
         return f"Payout {self.id} — {self.amount_paise}p [{self.status}]"
 
     def transition_to(self, new_status):
-        """
-        Enforce state machine. Raises ValueError on illegal transitions.
-        This is the ONLY way status should ever change.
-        """
+        
+        #Enforce state machine.
+        #This is the ONLY way status should ever change.
         allowed = self.VALID_TRANSITIONS.get(self.status, set())
         if new_status not in allowed:
             raise ValueError(
@@ -159,7 +190,7 @@ class Payout(models.Model):
 
     @transaction.atomic
     def mark_processing(self):
-        """Worker picks up this payout. Increment attempt counter."""
+        #Worker picks up this payout. Increment attempt counter
         self.transition_to(self.Status.PROCESSING)
         self.attempts += 1
         self.last_attempt_at = timezone.now()
@@ -194,7 +225,7 @@ class Payout(models.Model):
     def mark_failed(self):
         """
         Bank rejected or max retries hit. Release held funds back to merchant.
-        Atomic: if the release entry fails to write, status stays processing.
+        if the release entry fails to write, status stays processing.
         """
         self.transition_to(self.Status.FAILED)
         self.save(update_fields=["status", "updated_at"])
