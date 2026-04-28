@@ -3,8 +3,36 @@ from rest_framework import serializers
 from .models import BankAccount, LedgerEntry, Merchant, Payout
 
 
+class MerchantSerializer(serializers.ModelSerializer):
+    balance = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Merchant
+        fields = ["id", "name", "balance", "created_at"]
+
+    def get_balance(self, obj):
+        return obj.get_balance()
+
+
+class MerchantListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Merchant
+        fields = ["id", "name", "created_at"]
+
+
+class BankAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankAccount
+        fields = ["id", "account_number", "ifsc_code", "account_holder_name", "created_at"]
+
+
+class LedgerEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LedgerEntry
+        fields = ["id", "entry_type", "amount_paise", "description", "reference_id", "created_at"]
+
+
 class PayoutRequestSerializer(serializers.Serializer):
-    #validates the incoming payout request body
     amount_paise = serializers.IntegerField(min_value=100)
     bank_account_id = serializers.UUIDField()
 

@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import timedelta
 from functools import wraps
@@ -10,23 +11,6 @@ from .models import IdempotencyKey
 
 
 def idempotent(get_merchant_id):
-    """
-    Decorator for DRF view methods that enforces idempotency.
-
-    get_merchant_id: callable(request, **kwargs) -> UUID
-        Extracts the merchant ID from the incoming request.
-
-    Flow:
-    1. Parse Idempotency-Key header (required, must be valid UUID)
-    2. Try INSERT into idempotency_keys — DB unique constraint is the lock
-    3. If INSERT succeeds: this is a new request, proceed normally
-    4. If INSERT fails (IntegrityError): key exists, three sub-cases:
-       a. Key expired (>24h old) — delete and retry as new
-       b. Key still processing (response_body is None) — return 409
-       c. Key completed — return the cached response
-    5. After view executes, store response in the key row
-    """
-
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(view_instance, request, *args, **kwargs):
@@ -54,7 +38,7 @@ def idempotent(get_merchant_id):
             response = view_func(view_instance, request, *args, **kwargs)
 
             idem_key.response_status = response.status_code
-            idem_key.response_body = response.data
+            idem_key.response_body = json.loads(json.dumps(response.data, default=str))
             idem_key.save(update_fields=["response_status", "response_body"])
 
             return response
@@ -65,14 +49,6 @@ def idempotent(get_merchant_id):
 
 
 def _claim_or_retrieve(key_uuid, merchant_id):
-    """
-    Try to claim an idempotency key. Returns the IdempotencyKey object
-    if this is a new request, or a Response if it's a duplicate.
-
-    Uses INSERT with a unique constraint as the concurrency primitive —
-    two threads racing to claim the same key will have exactly one win
-    and one hit IntegrityError. No SELECT-then-INSERT race.
-    """
     try:
         with transaction.atomic():
             return IdempotencyKey.objects.create(

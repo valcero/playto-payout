@@ -6,11 +6,51 @@ from rest_framework.views import APIView
 
 from .idempotency import idempotent
 from .models import BankAccount, LedgerEntry, Merchant, Payout
-from .serializers import PayoutRequestSerializer, PayoutResponseSerializer
+from .serializers import (
+    BankAccountSerializer,
+    LedgerEntrySerializer,
+    MerchantListSerializer,
+    MerchantSerializer,
+    PayoutRequestSerializer,
+    PayoutResponseSerializer,
+)
 
 
 def _merchant_id_from_url(request, **kwargs):
     return kwargs["merchant_id"]
+
+
+class MerchantListView(APIView):
+    def get(self, request):
+        merchants = Merchant.objects.all()
+        return Response(MerchantListSerializer(merchants, many=True).data)
+
+
+class MerchantDetailView(APIView):
+    def get(self, request, merchant_id):
+        try:
+            merchant = Merchant.objects.get(id=merchant_id)
+        except Merchant.DoesNotExist:
+            return Response({"error": "Merchant not found"}, status=404)
+        return Response(MerchantSerializer(merchant).data)
+
+
+class MerchantLedgerView(APIView):
+    def get(self, request, merchant_id):
+        entries = LedgerEntry.objects.filter(merchant_id=merchant_id)
+        return Response(LedgerEntrySerializer(entries, many=True).data)
+
+
+class MerchantBankAccountsView(APIView):
+    def get(self, request, merchant_id):
+        accounts = BankAccount.objects.filter(merchant_id=merchant_id)
+        return Response(BankAccountSerializer(accounts, many=True).data)
+
+
+class MerchantPayoutsView(APIView):
+    def get(self, request, merchant_id):
+        payouts = Payout.objects.filter(merchant_id=merchant_id)
+        return Response(PayoutResponseSerializer(payouts, many=True).data)
 
 
 class PayoutCreateView(APIView):
